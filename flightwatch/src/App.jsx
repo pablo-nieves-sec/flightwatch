@@ -165,7 +165,7 @@ function Sheet({children,onClose,title}){
         onTouchMove={e=>{const d=e.touches[0].clientY-sy.current;if(d>0)setDy(d);}}
         onTouchEnd={()=>{if(dy>80)onClose();else setDy(0);sy.current=null;}}
         style={{position:"relative",background:"#161A22",borderRadius:"20px 20px 0 0",
-          padding:"0 18px 32px",maxHeight:"90vh",display:"flex",flexDirection:"column",
+          padding:"0 18px 32px",height:"95dvh",display:"flex",flexDirection:"column",
           border:"1px solid #252B3B",borderBottom:"none",
           transform:`translateY(${dy}px)`,transition:dy===0?"transform .25s ease":"none"}}>
         <div style={{display:"flex",justifyContent:"center",padding:"10px 0 6px",cursor:"grab"}}>
@@ -234,20 +234,32 @@ function AirportSheet({value,onSelect,onClose}){
 function SwipeRow({onDelete,label="Delete",children}){
   const [offset,setOffset]=useState(0);
   const [live,setLive]=useState(false);
+  const [revealed,setRevealed]=useState(false);
   const sx=useRef(null);
   const DW=80;
   return(
     <div style={{position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",right:0,top:0,bottom:0,width:DW,
         background:"#EF4444",display:"flex",flexDirection:"column",alignItems:"center",
-        justifyContent:"center",gap:3,cursor:"pointer"}}
-        onClick={()=>{setOffset(0);onDelete();}}>
+        justifyContent:"center",gap:3,cursor:"pointer",opacity:revealed?1:0,transition:"opacity .15s"}}
+        onClick={()=>{setOffset(0);setRevealed(false);onDelete();}}>
         <Trash/><span style={{color:"#fff",fontSize:10,fontWeight:700}}>{label}</span>
       </div>
       <div
         onTouchStart={e=>{sx.current=e.touches[0].clientX;setLive(true);}}
-        onTouchMove={e=>{if(sx.current===null)return;const dx=e.touches[0].clientX-sx.current;if(dx<0)setOffset(Math.max(dx,-DW));}}
-        onTouchEnd={()=>{setLive(false);setOffset(o=>o<-DW/2?-DW:0);sx.current=null;}}
+        onTouchMove={e=>{
+          if(sx.current===null)return;
+          const dx=e.touches[0].clientX-sx.current;
+          if(dx<0){setOffset(Math.max(dx,-DW));setRevealed(true);}
+          else if(dx>0){setOffset(0);setRevealed(false);}
+        }}
+        onTouchEnd={()=>{
+          setLive(false);
+          const snap=offset<-DW/2;
+          setOffset(snap?-DW:0);
+          setRevealed(snap);
+          sx.current=null;
+        }}
         style={{transform:`translateX(${offset}px)`,transition:live?"none":"transform .22s ease",position:"relative",zIndex:1}}>
         {children}
       </div>
@@ -679,8 +691,16 @@ function HomeScreen({trips,setTrips}){
               </div>
 
               {trip.routes.length===0
-                ?<div style={{padding:"16px 14px",textAlign:"center",color:"#555E73",fontSize:13,borderTop:"1px solid #252B3B"}}>
-                  Tap <b style={{color:"#4F8EF7"}}>+ Route</b> to start tracking
+                ?<div onClick={()=>setAddRouteFor(trip.id)}
+                  style={{padding:"20px 14px",textAlign:"center",color:"#555E73",fontSize:13,
+                    borderTop:"1px solid #252B3B",cursor:"pointer",
+                    display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+                  <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(79,142,247,.12)",
+                    border:"1.5px dashed rgba(79,142,247,.4)",display:"flex",alignItems:"center",
+                    justifyContent:"center",color:"#4F8EF7"}}>
+                    <Plus/>
+                  </div>
+                  <span>Tap anywhere here to add your first route</span>
                 </div>
                 :trip.routes.map(route=>{
                   const dr=route.currentPrice<route.threshold;
