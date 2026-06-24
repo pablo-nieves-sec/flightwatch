@@ -777,7 +777,7 @@ function AlertsScreen({trips,setTrips}){
     <SwipeRow onDelete={()=>del(r.tripId,r.id)}>
       <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",
         borderBottom:"1px solid #252B3B",
-        background:hi?"linear-gradient(90deg,rgba(52,211,153,.06),transparent)":"transparent"}}>
+        background:hi?"#0E1A14":"#0A0C10"}}>
         <div style={{width:7,height:7,borderRadius:"50%",flexShrink:0,
           background:hi?"#34D399":"#4F8EF7",boxShadow:hi?"0 0 0 3px rgba(52,211,153,.18)":"none"}}/>
         <div style={{flex:1,minWidth:0}}>
