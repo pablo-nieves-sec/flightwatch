@@ -31,7 +31,7 @@ const AIRPORTS=[
   {code:"PHX",city:"Phoenix"},{code:"HNL",city:"Honolulu"},{code:"MCO",city:"Orlando"},
   {code:"EWR",city:"Newark"},{code:"IAH",city:"Houston"},{code:"MSP",city:"Minneapolis"},
 ];
-const COLORS=["#4F8EF7","#A78BFA","#34D399","#F87171","#FBBF24","#F472B6","#60A5FA","#FB923C"];
+const COLORS=["#4F8EF7","#A78BFA","#34D399","#F87171","#FBBF24"];
 const DAYS=["Su","Mo","Tu","We","Th","Fr","Sa"];
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 const MS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -121,10 +121,10 @@ function PriceCalendar({from,to,selDep,selRet,onDep,onRet,pickingRet}){
       <div style={{padding:"4px 10px 2px",fontSize:9,fontWeight:600,color:pickingRet?"#A78BFA":"#4F8EF7",textTransform:"uppercase",letterSpacing:.6}}>
         {pickingRet?"↩ Tap return date (optional)":"✈ Tap departure date"}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"2px 6px 0"}}>
-        {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:8,fontWeight:600,color:"#555E73",padding:"3px 0",textTransform:"uppercase"}}>{d}</div>)}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"4px 8px 0"}}>
+        {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:10,fontWeight:600,color:"#555E73",padding:"5px 0",textTransform:"uppercase"}}>{d}</div>)}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"2px 6px 8px",gap:"1px 0"}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"2px 8px 12px",gap:"3px 0"}}>
         {Array.from({length:fd}).map((_,i)=><div key={`e${i}`}/>)}
         {Array.from({length:dc}).map((_,i)=>{
           const day=i+1,key=`${vm.year}-${String(vm.month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
@@ -132,12 +132,12 @@ function PriceCalendar({from,to,selDep,selRet,onDep,onRet,pickingRet}){
           return(
             <div key={key} onClick={()=>!past&&p&&handle(key)}
               style={{position:"relative",display:"flex",flexDirection:"column",alignItems:"center",
-                padding:"3px 1px",borderRadius:sel?6:rng?0:4,
+                padding:"6px 2px",borderRadius:sel?8:rng?0:6,
                 background:sel?"#4F8EF7":rng?"rgba(79,142,247,.12)":"transparent",
                 cursor:past||!p?"default":"pointer",opacity:past||!p?.3:1}}>
-              <div style={{fontSize:10,fontWeight:sel?800:600,color:sel?"#fff":"#C8CEDF",lineHeight:1,marginBottom:1}}>{day}</div>
-              {p&&<div style={{fontSize:7,fontWeight:700,color:sel?"rgba(255,255,255,.8)":pc(p),lineHeight:1}}>${p}</div>}
-              {chp&&!sel&&<div style={{position:"absolute",top:1,right:1,width:3,height:3,borderRadius:"50%",background:"#34D399"}}/>}
+              <div style={{fontSize:13,fontWeight:sel?800:600,color:sel?"#fff":"#C8CEDF",lineHeight:1,marginBottom:2}}>{day}</div>
+              {p&&<div style={{fontSize:9,fontWeight:700,color:sel?"rgba(255,255,255,.85)":pc(p),lineHeight:1}}>${p}</div>}
+              {chp&&!sel&&<div style={{position:"absolute",top:2,right:2,width:4,height:4,borderRadius:"50%",background:"#34D399"}}/>}
             </div>
           );
         })}
@@ -332,6 +332,76 @@ function FullChart({data,threshold,depart}){
   );
 }
 
+// ── BOOK BUTTON ────────────────────────────────────────────────────────────────
+function BookButton({route,dropped}){
+  const [showModal,setShowModal]=useState(false);
+  const url=gfl(route.from,route.to,route.depart,route.ret);
+  return(
+    <>
+      <button onClick={()=>setShowModal(true)}
+        style={{width:"100%",marginTop:14,padding:"13px 0",textAlign:"center",
+          background:dropped?"linear-gradient(135deg,#34D399,#059669)":"linear-gradient(135deg,#4F8EF7,#7C5CF6)",
+          color:dropped?"#0A2118":"#fff",borderRadius:10,fontSize:14,fontWeight:800,
+          border:"none",cursor:"pointer",fontFamily:"Inter,sans-serif",letterSpacing:-0.3,
+          boxShadow:dropped?"0 4px 20px rgba(52,211,153,.3)":"0 4px 14px rgba(79,142,247,.3)"}}>
+        {dropped?`Book Now — $${route.currentPrice} →`:"Check Flights →"}
+      </button>
+
+      {showModal&&(
+        <div style={{position:"fixed",inset:0,zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+          <div onClick={()=>setShowModal(false)} style={{position:"absolute",inset:0,background:"rgba(0,0,0,.7)"}}/>
+          <div style={{position:"relative",background:"#161A22",borderRadius:"20px 20px 0 0",
+            width:"100%",padding:"24px 20px 40px",border:"1px solid #252B3B",borderBottom:"none"}}>
+            <div style={{display:"flex",justifyContent:"center",marginBottom:20}}>
+              <div style={{width:36,height:4,borderRadius:2,background:"#3A4055"}}/>
+            </div>
+            {/* Route summary */}
+            <div style={{textAlign:"center",marginBottom:20}}>
+              <div style={{fontSize:22,fontWeight:800,letterSpacing:-1,color:"#F0F2F8",marginBottom:4}}>
+                {route.from} → {route.to}
+              </div>
+              <div style={{fontSize:13,color:"#8B93A8"}}>
+                {fmt(route.depart)}{route.ret?` – ${fmt(route.ret)}`:""} · {route.passengers} passenger{route.passengers>1?"s":""}
+              </div>
+              {dropped&&(
+                <div style={{marginTop:12,display:"inline-flex",alignItems:"center",gap:8,
+                  background:"rgba(52,211,153,.12)",border:"1px solid rgba(52,211,153,.3)",
+                  borderRadius:12,padding:"8px 16px"}}>
+                  <div style={{fontSize:28,fontWeight:800,color:"#34D399",letterSpacing:-1}}>${route.currentPrice}</div>
+                  <div style={{fontSize:12,color:"#34D399",fontWeight:600}}>↓ Below your<br/>${route.threshold} limit</div>
+                </div>
+              )}
+            </div>
+
+            {/* Primary: Go to Google Flights */}
+            <a href={url} target="_blank" rel="noopener noreferrer"
+              onClick={()=>setShowModal(false)}
+              style={{display:"block",width:"100%",padding:"15px 0",textAlign:"center",
+                background:dropped?"linear-gradient(135deg,#34D399,#059669)":"linear-gradient(135deg,#4F8EF7,#7C5CF6)",
+                color:dropped?"#0A2118":"#fff",borderRadius:12,fontSize:15,fontWeight:800,
+                textDecoration:"none",letterSpacing:-0.3,marginBottom:12,
+                boxShadow:dropped?"0 4px 20px rgba(52,211,153,.3)":"0 4px 14px rgba(79,142,247,.3)"}}>
+              Search on Google Flights →
+            </a>
+
+            {/* Secondary: dismiss */}
+            <button onClick={()=>setShowModal(false)}
+              style={{width:"100%",padding:"13px 0",textAlign:"center",background:"#1E2330",
+                color:"#8B93A8",borderRadius:12,fontSize:14,fontWeight:600,
+                border:"1px solid #2E3448",cursor:"pointer",fontFamily:"Inter,sans-serif"}}>
+              Not yet
+            </button>
+
+            <div style={{marginTop:14,textAlign:"center",fontSize:10,color:"#555E73",lineHeight:1.5}}>
+              FlightWatch shows simulated prices. Real-time booking requires<br/>connecting to a live data source (Phase 2).
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── ROUTE EXPANDED CARD (inline on home) ───────────────────────────────────────
 function RouteExpanded({route,onClose,onEdit,onDelete,onRefresh}){
   const dr=route.currentPrice<route.threshold;
@@ -394,14 +464,7 @@ function RouteExpanded({route,onClose,onEdit,onDelete,onRefresh}){
       </div>
 
       {/* Book button */}
-      <a href={gfl(route.from,route.to,route.depart,route.ret)} target="_blank" rel="noopener noreferrer"
-        style={{display:"block",width:"100%",marginTop:14,padding:"13px 0",textAlign:"center",
-          background:dr?"linear-gradient(135deg,#34D399,#059669)":"linear-gradient(135deg,#4F8EF7,#7C5CF6)",
-          color:dr?"#0A2118":"#fff",borderRadius:10,fontSize:14,fontWeight:800,
-          textDecoration:"none",letterSpacing:-0.3,
-          boxShadow:dr?"0 4px 20px rgba(52,211,153,.3)":"0 4px 14px rgba(79,142,247,.3)"}}>
-        {dr?`Book Now — $${route.currentPrice} →`:"Search on Google Flights →"}
-      </a>
+      <BookButton route={route} dropped={dr}/>
     </div>
   );
 }
@@ -608,10 +671,10 @@ function AddTripForm({onSave,onClose}){
           style={{...INP,fontSize:15}}/>
       </div>
       <div style={{marginBottom:24}}><Lbl>Color</Lbl>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+        <div style={{display:"flex",gap:14,alignItems:"center"}}>
           {COLORS.map(c=><button key={c} onClick={()=>setColor(c)}
-            style={{width:32,height:32,borderRadius:"50%",background:c,border:"none",cursor:"pointer",
-              outline:color===c?`3px solid ${c}`:"3px solid transparent",outlineOffset:2}}/>)}
+            style={{width:42,height:42,borderRadius:"50%",background:c,border:"none",cursor:"pointer",flexShrink:0,
+              outline:color===c?`3px solid ${c}`:"3px solid transparent",outlineOffset:3}}/>)}
         </div>
       </div>
       <PBtn onClick={()=>{if(name.trim()){onSave({id:uid(),name:name.trim(),color,routes:[]});onClose();}}} disabled={!name.trim()}>
