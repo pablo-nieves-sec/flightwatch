@@ -236,6 +236,8 @@ function SwipeRow({onDelete,label="Delete",children}){
   const [live,setLive]=useState(false);
   const [revealed,setRevealed]=useState(false);
   const sx=useRef(null);
+  const sy=useRef(null);
+  const locked=useRef(null); // "h"=horizontal, "v"=vertical, null=undecided
   const DW=80;
   return(
     <div style={{position:"relative",overflow:"hidden"}}>
@@ -246,19 +248,38 @@ function SwipeRow({onDelete,label="Delete",children}){
         <Trash/><span style={{color:"#fff",fontSize:10,fontWeight:700}}>{label}</span>
       </div>
       <div
-        onTouchStart={e=>{sx.current=e.touches[0].clientX;setLive(true);}}
+        onTouchStart={e=>{
+          sx.current=e.touches[0].clientX;
+          sy.current=e.touches[0].clientY;
+          locked.current=null;
+          setLive(true);
+        }}
         onTouchMove={e=>{
           if(sx.current===null)return;
           const dx=e.touches[0].clientX-sx.current;
+          const dy=e.touches[0].clientY-sy.current;
+          // Decide direction on first meaningful movement
+          if(locked.current===null){
+            if(Math.abs(dx)<4&&Math.abs(dy)<4)return; // too small to decide yet
+            // Lock to whichever axis moved more — require horizontal to be clearly dominant
+            locked.current=Math.abs(dx)>Math.abs(dy)*1.5?"h":"v";
+          }
+          if(locked.current==="v")return; // let the page scroll
+          // Horizontal swipe
+          e.preventDefault(); // prevent scroll while swiping
           if(dx<0){setOffset(Math.max(dx,-DW));setRevealed(true);}
           else if(dx>0){setOffset(0);setRevealed(false);}
         }}
         onTouchEnd={()=>{
           setLive(false);
-          const snap=offset<-DW/2;
-          setOffset(snap?-DW:0);
-          setRevealed(snap);
+          if(locked.current==="h"){
+            const snap=offset<-DW/2;
+            setOffset(snap?-DW:0);
+            setRevealed(snap);
+          }
           sx.current=null;
+          sy.current=null;
+          locked.current=null;
         }}
         style={{transform:`translateX(${offset}px)`,transition:live?"none":"transform .22s ease",position:"relative",zIndex:1}}>
         {children}
