@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import * as db from './supabase.js';
 
 // ── ICONS ──────────────────────────────────────────────────────────────────────
 const Ic = ({ d, size=22, ...p }) => (
@@ -74,6 +75,12 @@ function loadTrips(){
 function saveTrips(trips){
   try{localStorage.setItem(LS_KEY,JSON.stringify(trips));}catch{}
 }
+// Supabase sync helpers — fire and forget, localStorage is source of truth for UI speed
+async function syncAddTrip(t){ if(db.isConnected()) try{await db.createTrip(t);}catch(e){console.warn('sync addTrip:',e);} }
+async function syncAddRoute(tripId,r){ if(db.isConnected()) try{await db.createRoute(tripId,r);}catch(e){console.warn('sync addRoute:',e);} }
+async function syncEditRoute(r){ if(db.isConnected()) try{await db.updateRoute(r);}catch(e){console.warn('sync editRoute:',e);} }
+async function syncDelTrip(id){ if(db.isConnected()) try{await db.deleteTrip(id);}catch(e){console.warn('sync delTrip:',e);} }
+async function syncDelRoute(id){ if(db.isConnected()) try{await db.deleteRoute(id);}catch(e){console.warn('sync delRoute:',e);} }
 
 // ── SEED DATA ──────────────────────────────────────────────────────────────────
 const SEED=[
@@ -718,13 +725,14 @@ function HomeScreen({trips,setTrips}){
 
   const dropped=trips.flatMap(t=>t.routes.map(r=>({...r,tripId:t.id}))).filter(r=>r.currentPrice<r.threshold);
 
-  const addTrip =t=>setTrips(ts=>[...ts,t]);
-  const addRoute=r=>setTrips(ts=>ts.map(t=>t.id===addRouteFor?{...t,routes:[...t.routes,r]}:t));
-  const saveEdit=r=>setTrips(ts=>ts.map(t=>({...t,routes:t.routes.map(x=>x.id===r.id?r:x)})));
-  const delTrip =id=>{setTrips(ts=>ts.filter(t=>t.id!==id));if(expanded?.tripId===id)setExpanded(null);};
+  const addTrip =t=>{setTrips(ts=>[...ts,t]);syncAddTrip(t);};
+  const addRoute=r=>{setTrips(ts=>ts.map(t=>t.id===addRouteFor?{...t,routes:[...t.routes,r]}:t));syncAddRoute(addRouteFor,r);};
+  const saveEdit=r=>{setTrips(ts=>ts.map(t=>({...t,routes:t.routes.map(x=>x.id===r.id?r:x)})));syncEditRoute(r);};
+  const delTrip =id=>{setTrips(ts=>ts.filter(t=>t.id!==id));if(expanded?.tripId===id)setExpanded(null);syncDelTrip(id);};
   const delRoute=(tid,rid)=>{
     setTrips(ts=>ts.map(t=>t.id===tid?{...t,routes:t.routes.filter(r=>r.id!==rid)}:t));
     if(expanded?.routeId===rid)setExpanded(null);
+    syncDelRoute(rid);
   };
   const doRefresh=(routeId)=>{
     setTrips(ts=>ts.map(t=>({...t,routes:t.routes.map(r=>{
@@ -855,7 +863,7 @@ function AlertsScreen({trips,setTrips}){
   const all=trips.flatMap(t=>t.routes.map(r=>({...r,tripId:t.id,tripName:t.name})));
   const dropped=all.filter(r=>r.currentPrice<r.threshold);
   const watching=all.filter(r=>r.currentPrice>=r.threshold);
-  const del=(tid,rid)=>setTrips(ts=>ts.map(t=>t.id===tid?{...t,routes:t.routes.filter(r=>r.id!==rid)}:t));
+  const del=(tid,rid)=>{setTrips(ts=>ts.map(t=>t.id===tid?{...t,routes:t.routes.filter(r=>r.id!==rid)}:t));syncDelRoute(rid);};
 
   const Row=({r,hi})=>(
     <SwipeRow onDelete={()=>del(r.tripId,r.id)}>
@@ -964,7 +972,7 @@ function SettingsScreen({trips,setTrips}){
               <div style={{width:9,height:9,borderRadius:"50%",background:t.color}}/>
               <div><div style={{fontSize:13,fontWeight:600,color:"#F0F2F8"}}>{t.name}</div><div style={{fontSize:10,color:"#555E73"}}>{t.routes.length} route{t.routes.length!==1?"s":""}</div></div>
             </div>
-            <button onClick={()=>setTrips(ts=>ts.filter(x=>x.id!==t.id))}
+            <button onClick={()=>{setTrips(ts=>ts.filter(x=>x.id!==t.id));syncDelTrip(t.id);}}
               style={{background:"rgba(248,113,113,.08)",border:"1px solid rgba(248,113,113,.15)",borderRadius:7,padding:"5px 8px",color:"#F87171",cursor:"pointer",display:"flex"}}><Trash/></button>
           </div>
         ))}
@@ -1003,8 +1011,19 @@ const PBtn=({children,onClick,disabled})=>(
 export default function App(){
   const [tab,setTab]=useState("home");
   const [trips,setTrips]=useState(()=>loadTrips()||SEED);
+  const [loaded,setLoaded]=useState(false);
 
-  // Save on every trips change
+  // On first load, try to fetch from Supabase (if configured)
+  useEffect(()=>{
+    if(db.isConnected()&&!loaded){
+      db.fetchTrips().then(t=>{
+        if(t&&t.length>0){setTrips(t);saveTrips(t);}
+        setLoaded(true);
+      }).catch(e=>{console.warn('Supabase fetch failed, using localStorage:',e);setLoaded(true);});
+    } else { setLoaded(true); }
+  },[]);
+
+  // Save to localStorage on every change
   useEffect(()=>saveTrips(trips),[trips]);
 
   const TABS=[
